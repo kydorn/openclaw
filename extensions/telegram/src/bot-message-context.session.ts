@@ -400,11 +400,14 @@ export async function buildTelegramInboundContextPayload(params: {
   });
   const inboundHistory =
     isGroup && historyKey && historyLimit > 0
-      ? (groupHistories.get(historyKey) ?? []).map((entry) => ({
-          sender: entry.sender,
-          body: entry.body,
-          timestamp: entry.timestamp,
-        }))
+      ? (groupHistories.get(historyKey) ?? []).map((entry) => {
+          const shortSender = entry.sender?.split(" (")[0].split(" id:")[0];
+          return {
+            sender: entry.sender,
+            body: shortSender ? `${shortSender}: ${entry.body}` : entry.body,
+            timestamp: entry.timestamp,
+          };
+        })
       : undefined;
   const currentMediaForContext = stickerCacheHit ? [] : allMedia;
   const contextMedia = [...currentMediaForContext, ...replyMedia];
@@ -452,7 +455,7 @@ export async function buildTelegramInboundContextPayload(params: {
     message: {
       body: combinedBody,
       rawBody,
-      bodyForAgent: bodyText,
+      bodyForAgent: isGroup && senderName ? `${senderName}: ${bodyText}` : bodyText,
       commandBody,
       envelopeFrom: conversationLabel,
       inboundHistory,

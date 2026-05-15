@@ -241,27 +241,47 @@ function sanitizeUserReplayContent(message: AgentMessage): AgentMessage | null {
   }
   const replayContent = (message as { content?: unknown }).content;
   if (typeof replayContent === "string") {
-    return replayContent.trim() ? message : null;
+    const stripped = stripInboundMetadata(replayContent);
+    if (!stripped.trim()) {
+      return null;
+    }
+    return stripped === replayContent ? message : ({ ...message, content: stripped } as AgentMessage);
   }
   if (!Array.isArray(replayContent)) {
     return message;
   }
 
   let touched = false;
-  const sanitizedContent = replayContent.filter((block) => {
+  const sanitizedContent: unknown[] = [];
+  for (const block of replayContent) {
     if (!block || typeof block !== "object") {
-      return true;
+      sanitizedContent.push(block);
+      continue;
     }
     if ((block as { type?: unknown }).type !== "text") {
-      return true;
+      sanitizedContent.push(block);
+      continue;
     }
     const text = (block as { text?: unknown }).text;
-    if (typeof text !== "string" || text.trim().length > 0) {
-      return true;
+    if (typeof text !== "string") {
+      sanitizedContent.push(block);
+      continue;
+    }
+    const stripped = stripInboundMetadata(text);
+    if (stripped === text) {
+      if (text.trim().length === 0) {
+        touched = true;
+        continue;
+      }
+      sanitizedContent.push(block);
+      continue;
     }
     touched = true;
-    return false;
-  });
+    if (stripped.trim().length === 0) {
+      continue;
+    }
+    sanitizedContent.push({ ...block, text: stripped });
+  }
   if (sanitizedContent.length === 0) {
     return null;
   }

@@ -402,13 +402,17 @@ export async function buildTelegramInboundContextPayload(params: {
   const commandBody = normalizeCommandBody(rawBody, {
     botUsername: normalizeOptionalLowercaseString(primaryCtx.me?.username),
   });
-  const inboundHistory =
+  const rawInboundHistory =
     isGroup && historyKey && historyLimit > 0
       ? channelHistory.buildInboundHistory({
           historyKey,
           limit: historyLimit,
         })
       : undefined;
+  const inboundHistory = rawInboundHistory?.map((entry) => {
+    const shortSender = entry.sender?.split(" (")[0].split(" id:")[0];
+    return shortSender ? { ...entry, body: `${shortSender}: ${entry.body}` } : entry;
+  });
   const currentMediaForContext = stickerCacheHit ? [] : allMedia;
   const replyHead = visibleReplyChain[0];
   const toInboundMedia = (media: TelegramMediaRef, index?: number) => ({
@@ -483,7 +487,7 @@ export async function buildTelegramInboundContextPayload(params: {
       inboundEventKind,
       body: combinedBody,
       rawBody,
-      bodyForAgent: bodyText,
+      bodyForAgent: isGroup && senderName ? `${senderName}: ${bodyText}` : bodyText,
       commandBody,
       inboundHistory,
     },

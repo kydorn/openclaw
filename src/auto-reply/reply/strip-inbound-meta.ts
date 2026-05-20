@@ -12,7 +12,18 @@
  *
  * Also strips the timestamp prefix injected by `injectTimestamp` so UI surfaces
  * do not show AI-facing envelope metadata as user text.
+ *
+ * NOTE: any new import added to this file must be safe for the browser bundle.
+ * The control UI imports `stripInboundMetadata` (via
+ * `ui/src/ui/chat/message-extract.ts` and `message-normalizer.ts`), so anything
+ * reachable from here ends up in the UI bundle. Importing from
+ * `./inbound-meta.js` (or other server-tree modules) drags Node-only code
+ * (`@openclaw/fs-safe`, etc.) into the browser and breaks the UI with
+ * `process is not defined`. Shared string constants live in
+ * `./inbound-meta-sentinels.js` for exactly this reason.
  */
+
+import { MESSAGE_TOOL_DELIVERY_HINT } from "./inbound-meta-sentinels.js";
 
 const LEADING_TIMESTAMP_PREFIX_RE = /^\[[A-Za-z]{3} \d{4}-\d{2}-\d{2} \d{2}:\d{2}[^\]]*\] */;
 
@@ -31,11 +42,6 @@ const INBOUND_META_SENTINELS = [
   "Forwarded message context (untrusted metadata):",
   "Chat history since last reply (untrusted, for context):",
 ] as const;
-
-// Single-line hint pushed to the top of `buildInboundUserContextPrefix` when
-// `sourceReplyDeliveryMode === "message_tool_only"`. Not followed by a fenced
-// block. Defined in `inbound-meta.ts` as MESSAGE_TOOL_DELIVERY_HINT.
-const MESSAGE_TOOL_DELIVERY_HINT = "Delivery: to send a message, use the `message` tool.";
 
 // Chat_window structured-context projection emitted by room-event turns (e.g.
 // telegram bot-handlers `label: "Conversation context"`, order "chronological",

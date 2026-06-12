@@ -485,7 +485,10 @@ export async function buildTelegramInboundContextPayload(params: {
   const inboundHistory =
     hasGroupHistoryContext && historyKey && historyLimit > 0
       ? groupHistoryPromptEntries.length > 0
-        ? groupHistoryPromptEntries
+        ? groupHistoryPromptEntries.map((entry) => {
+            const shortSender = entry.sender?.split(" (")[0].split(" id:")[0];
+            return shortSender ? { ...entry, body: `${shortSender}: ${entry.body}` } : entry;
+          })
         : undefined
       : undefined;
   const ctxPayload = await sessionRuntime.buildChannelInboundEventContext({
@@ -522,7 +525,7 @@ export async function buildTelegramInboundContextPayload(params: {
       inboundEventKind,
       body,
       rawBody,
-      bodyForAgent: bodyText,
+      bodyForAgent: isGroup && senderName ? `${senderName}: ${bodyText}` : bodyText,
       commandBody,
       inboundHistory,
       sourceModality: msg.voice ? "voice" : undefined,

@@ -55,7 +55,13 @@ export function installMessageToolOnlyTerminalHook(params: {
       })
     ) {
       params.onDeliveredSourceReply?.();
-      return hookResult;
+      // Hard-stop after a delivered implicit-route message(send). v2026.6.10's
+      // refactor dropped the `terminate: true` return carried since v2026.5.22+,
+      // leaving the state flag as the inhibition signal — but the run loop
+      // issues a second model fetch and a duplicate send before the flag takes
+      // effect (observed Telegram self-reply loop: two sendMessage calls per
+      // turn). Restoring the early-termination hint closes the window.
+      return { ...hookResult, terminate: true };
     }
     return hookResult;
   };
